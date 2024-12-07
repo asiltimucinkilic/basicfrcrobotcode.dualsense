@@ -7,7 +7,11 @@ package frc.robot;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.PS5Controller;
+import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.configs.TalonFXConfigurator;
 
 
 /**
@@ -17,8 +21,17 @@ import edu.wpi.first.wpilibj.PS5Controller;
  * project.
  */
 public class Robot extends TimedRobot {
-  private static final String kDefaultAuto = "Default";
-  private static final String kCustomAuto = "My Auto";
+  private PS5Controller dualsense = new PS5Controller(0);
+  private Timer timer = new Timer();
+  private TalonFX left_motor = new TalonFX(1);
+  private TalonFX right_motor = new TalonFX(2);
+  private TalonFX feeder_motor = new TalonFX(3);
+  private TalonFX intake_motor = new TalonFX(4);
+  private TalonFXConfiguration left_motor_config = new TalonFXConfiguration();
+  private TalonFXConfiguration right_motor_config = new TalonFXConfiguration();
+  private TalonFXConfigurator  motor_configurator = new TalonFXConfigurator(null);
+  private static final String kDefaultAuto = "Varsayılan";
+  private static final String kCustomAuto = "Otonom'um";
   private String m_autoSelected;
   private final SendableChooser<String> m_chooser = new SendableChooser<>();
 
@@ -28,9 +41,22 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotInit() {
-    m_chooser.setDefaultOption("Default Auto", kDefaultAuto);
-    m_chooser.addOption("My Auto", kCustomAuto);
-    SmartDashboard.putData("Auto choices", m_chooser);
+    m_chooser.setDefaultOption("Varsayılan Otonom", kDefaultAuto);
+    m_chooser.addOption("Otonom'um", kCustomAuto);
+    SmartDashboard.putData("Otonom Seçenekleri", m_chooser);
+    
+    timer.reset();
+    timer.start();
+
+    motor_configurator.apply(left_motor_config);
+    motor_configurator.apply(right_motor_config);
+
+    left_motor.getConfigurator().apply(left_motor_config);
+    right_motor.getConfigurator().apply(right_motor_config);
+    
+
+
+
   }
 
   /**
@@ -42,6 +68,8 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotPeriodic() {}
+
+  
 
   /**
    * This autonomous (along with the chooser code above) shows how to select between different
@@ -56,8 +84,9 @@ public class Robot extends TimedRobot {
   @Override
   public void autonomousInit() {
     m_autoSelected = m_chooser.getSelected();
-    // m_autoSelected = SmartDashboard.getString("Auto Selector", kDefaultAuto);
-    System.out.println("Auto selected: " + m_autoSelected);
+    m_autoSelected = SmartDashboard.getString("Otonom Seçici", kDefaultAuto);
+    m_autoSelected = SmartDashboard.getString("Otonom Seçici:", kCustomAuto);
+    System.out.println("Seçilen Otonom: " + m_autoSelected);
   }
 
   /** This function is called periodically during autonomous. */
@@ -65,22 +94,144 @@ public class Robot extends TimedRobot {
   public void autonomousPeriodic() {
     switch (m_autoSelected) {
       case kCustomAuto:
-        // Put custom auto code here
-        break;
+        if (timer.get() < 5) {
+
+          left_motor.set(1);
+          right_motor.set(1);
+        }
+
+        else if (timer.get()>= 5 && timer.get() < 6) {
+
+          left_motor.set(1);
+          right_motor.set(0);
+        }
+
+        else {
+
+          left_motor.set(1);
+          right_motor.set(1);
+        }
+      break;
       case kDefaultAuto:
       default:
-        // Put default auto code here
+       if (timer.get() < 5) {
+
+          left_motor.set(1);
+          right_motor.set(1);
+        }
+
+        else if (timer.get()>= 5 && timer.get() < 6) {
+
+          left_motor.set(0);
+          right_motor.set(1);
+        }
+
+        else {
+
+          left_motor.set(1);
+          right_motor.set(1);
+        }
         break;
     }
   }
 
   /** This function is called once when teleop is enabled. */
   @Override
-  public void teleopInit() {}
+  public void teleopInit() {
+
+    dualsense = new PS5Controller(0);
+    left_motor = new TalonFX(0);
+    right_motor= new TalonFX(1);
+    feeder_motor = new TalonFX(2);
+    intake_motor = new TalonFX(3);
+    right_motor_config= new TalonFXConfiguration();
+    left_motor_config= new TalonFXConfiguration();
+    motor_configurator= new TalonFXConfigurator(null);
+
+    left_motor.getConfigurator().apply(left_motor_config);
+    right_motor.getConfigurator().apply(right_motor_config);
+    motor_configurator.apply(left_motor_config);
+    motor_configurator.apply(right_motor_config);
+
+
+
+
+  }
 
   /** This function is called periodically during operator control. */
   @Override
-  public void teleopPeriodic() {}
+  public void teleopPeriodic() {
+
+    double forward = dualsense.getLeftY();
+    double turn = dualsense.getRightX();
+
+    if(dualsense.getCircleButton()) {
+
+      left_motor.set(1);
+      right_motor.set(1);
+    
+    }
+
+    else if (dualsense.getCrossButton()) {
+
+      left_motor.set(-1);
+      right_motor.set(-1);
+
+
+
+    }
+
+    else {
+
+      double left_motor_speed = forward + turn;
+      double right_motor_speed = forward - turn;
+
+
+      left_motor.set(left_motor_speed);
+      right_motor.set(right_motor_speed);
+
+
+
+    }
+
+    if(dualsense.getL2Button()) {
+
+      feeder_motor.set(0.7);
+      intake_motor.set(0.7);
+
+
+
+    }
+
+    else if (dualsense.getR2Button()) {
+
+      feeder_motor.set(-0.7);
+      intake_motor.set(-0.7);
+
+
+
+    }
+
+    else {
+
+      feeder_motor.set(0);
+      intake_motor.set(0);
+
+
+    }
+
+
+  
+
+
+
+
+
+
+
+
+
+  }
 
   /** This function is called once when the robot is disabled. */
   @Override
